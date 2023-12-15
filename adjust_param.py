@@ -25,7 +25,8 @@ while True:
 
     cnt = 1
     if c == 's':
-        cv2.imwrite(str(cnt) + '.jpg', frame)
+        pic_path = 'record/' + str(cnt) + '.jpg'
+        cv2.imwrite(pic_path, frame)
         cnt += 1
     if c == 27:
         break
