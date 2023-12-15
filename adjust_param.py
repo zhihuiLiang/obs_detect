@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+save_dir = 'record/'
+
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     print("Cannot open camera")
@@ -11,11 +13,12 @@ height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print(f'size:{width}×{height}')
 
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter('origin_vedio.mp4',
+out = cv2.VideoWriter(save_dir + 'origin_vedio.mp4',
                       fourcc=fourcc,
                       fps=30,
                       frameSize=(width, height))
 
+cnt = 1
 while True:
     _, frame = cap.read()
     cv2.imshow("A video", frame)
@@ -23,9 +26,9 @@ while True:
     ret = out.write(frame)
     c = cv2.waitKey(1)
 
-    cnt = 1
-    if c == 's':
-        pic_path = 'record/' + str(cnt) + '.jpg'
+    if c == 49:  #'1'
+        print(f'Save picture {cnt}/20')
+        pic_path = save_dir + str(cnt) + '.jpg'
         cv2.imwrite(pic_path, frame)
         cnt += 1
     if c == 27:
