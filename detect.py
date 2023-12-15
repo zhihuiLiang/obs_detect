@@ -25,12 +25,8 @@ with open('conf.json') as f:
     conf_data = json.load(f)
 shape = conf_data['shape']
 
-cam_mat = np.array(
-    conf_data['left_cam_mat']
-) if conf_data['cam_choose'] == 'left' else conf_data['right_cam_mat']
-distor_coffe = np.array(
-    conf_data['left_distortion']
-) if conf_data['cam_choose'] == 'left' else conf_data['right_distortion']
+cam_mat = np.transpose(conf_data['cam_mat'])
+distor_coffe = np.array(conf_data['distortion'])
 
 h1_max = 10
 h2_min = 143
