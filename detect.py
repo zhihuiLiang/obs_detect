@@ -1,7 +1,22 @@
-from distutils.command.config import config
 import cv2
 import numpy as np
 import json
+
+ENABLE_BLUR = False
+
+H1_MAX = 10
+H2_MIN = 143
+S_MIN = 51
+S_MAX = 201
+V_MIN = 186
+V_MAX = 255
+
+BLUR_SIZE = 5
+ROI_SIZE = (20, 28)
+
+MIN_BOX_CONTOUR = 200
+MIN_NUN_CONTOUR = 20
+MAX_NUM_CONTOUR = 2000
 
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -32,17 +47,6 @@ distor_coffe = np.array(
     conf_data['left_distortion']
 ) if conf_data['cam_choose'] == 'left' else conf_data['right_distortion']
 
-h1_max = 10
-h2_min = 143
-s_min = 51
-s_max = 201
-v_min = 186
-v_max = 255
-
-blur_size = 5
-roi_size = (20, 28)
-
-
 def findConvexPoints(hull):
     x_min_index = np.argmin(hull[:, :, 0])
     x_max_index = np.argmax(hull[:, :, 0])
@@ -72,19 +76,19 @@ def drawConvex(points, img):
     for i, p in enumerate(points):
         cv2.line(img, (p[0], p[1]),
                  (points[(i + 1) % 4][0], points[(i + 1) % 4][1]), (0, 255, 0),
-                 2)
+                 1)
         cv2.putText(img, str(i), (p[0], p[1]), cv2.FONT_HERSHEY_SIMPLEX, 1,
-                    (255, 0, 0), 2)
+                    (255, 0, 0), 1)
 
 
 def extractNumImg(points, img):
-    width, height = roi_size
+    width, height = ROI_SIZE
     target_vertices = np.float32([[0, 0], [width, 0], [width, height],
                                   [0, height]])
 
     rotate_mat = cv2.getPerspectiveTransform(np.float32(points),
                                              target_vertices)
-    perspective_img = cv2.warpPerspective(img, rotate_mat, roi_size)
+    perspective_img = cv2.warpPerspective(img, rotate_mat, ROI_SIZE)
     cv2.imshow('perspective_img', perspective_img)
 
     num_img = cv2.cvtColor(perspective_img, cv2.COLOR_RGB2GRAY)
@@ -97,7 +101,7 @@ def classifyNum(img):
     img = np.float32(img) / 255
 
     def classify(img):
-        blob = cv2.dnn.blobFromImage(img, 1.0, roi_size)
+        blob = cv2.dnn.blobFromImage(img, 1.0, ROI_SIZE)
         num_classify_net.setInput(blob)
 
         outputs = num_classify_net.forward()
@@ -116,7 +120,7 @@ def classifyNum(img):
     if id == 8 or conf1 < 0.7:
         img = cv2.flip(img, 0)
         id2, conf2 = classify(img)
-    return id1 if conf1 > conf2 else id2
+    return id1 if conf1 > conf2 or id2 == 8 else id2
 
 
 def doPnP(idx, points_in_img):
@@ -129,7 +133,19 @@ def doPnP(idx, points_in_img):
                         np.float32(cam_mat), np.float32(distor_coffe), None,
                         None, False, cv2.SOLVEPNP_EPNP)
 
-
+def rotateVec2EulerAnge(rvec):
+    rmat = cv2.Rodrigues(rvec)
+    pass
+    ''' ZYX式旋转 先yaw、后pitch、在roll
+    [[cos(pitch) * cos(yaw), -sin(yaw) * cos(pitch), sin(pitch), 0], 
+     [sin(pitch) * sin(roll) * cos(yaw) + sin(yaw) * cos(roll),
+      -sin(pitch) * sin(roll) * sin(yaw) + cos(roll) *cos(yaw),
+      -sin(r) * cos(pitch), 0],
+      [-sin(pitch) * cos(roll) * cos(yaw) + sin(roll) * sin(yaw), 
+       sin(pitch) * sin(yaw) * cos(roll) + sin(roll) * cos(yaw),
+      cos(pitch) * cos(roll), 0]
+      [0, 0, 0, 1]]
+    '''
 while True:
     _, frame = cap.read()
     height, width, _ = frame.shape
@@ -138,37 +154,49 @@ while True:
     gray_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     hsv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    mask0 = cv2.inRange(hsv_img, np.array([0, s_min, v_min]),
-                        np.array([h1_max, s_max, v_max]))
-    mask1 = cv2.inRange(hsv_img, np.array([h2_min, s_min, v_min]),
-                        np.array([255, s_max, v_max]))
+    mask0 = cv2.inRange(hsv_img, np.array([0, S_MIN, V_MIN]),
+                        np.array([H1_MAX, S_MAX, V_MAX]))
+    mask1 = cv2.inRange(hsv_img, np.array([H2_MIN, S_MIN, V_MIN]),
+                        np.array([255, S_MAX, V_MAX]))
 
     binary_img = mask0 + mask1
     cv2.imshow('Binary', binary_img)
-    blur_img = cv2.blur(binary_img, (blur_size, blur_size))
-    cv2.imshow('Blur', blur_img)
+    blur_img = binary_img
+    if ENABLE_BLUR:
+        blur_img = cv2.blur(binary_img, (BLUR_SIZE, BLUR_SIZE))
+        cv2.imshow('Blur', blur_img)
 
+    contour_img = np.copy(frame)
     contours, hierachy = cv2.findContours(blur_img, cv2.RETR_CCOMP,
                                           cv2.CHAIN_APPROX_SIMPLE)
+    
+    cv2.drawContours(contour_img, contours, -1, (0, 255, 0), 1)
+    cv2.imshow('contour', contour_img)
     for i, contour in enumerate(contours):
-        if len(contour) < 5 or contour.size < 300 or hierachy[0][i][
-                3] != -1:  # hierachy依次为后一个轮廓、前一个轮廓、父轮廓、内嵌轮廓
+        contour_area = cv2.contourArea(contour)
+        if contour_area < MIN_NUN_CONTOUR or contour_area > MAX_NUM_CONTOUR or hierachy[0][i][3] == -1: 
+            print(f'box contourArea:{cv2.contourArea(contour)} too small or this contour do not have parenet contour')
             continue
-        hull = cv2.convexHull(contour)
-        points = findConvexPoints(hull)
-        drawConvex(points, result_img)
-        num_contour_idx = hierachy[0][i][2]
-        num_hull = cv2.convexHull(contours[num_contour_idx])
+        num_hull = cv2.convexHull(contour)
         num_points = findConvexPoints(num_hull)
         drawConvex(num_points, result_img)
         num_image = extractNumImg(num_points, frame)
         id = classifyNum(num_image)
         cv2.putText(result_img, str(id),
                     (num_points[0][0] + 10, num_points[0][1]),
-                    cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 1)
         if id == 8:
             continue
-        #ok, r_vec, t_vec = doPnP(id, points)
+        
+        box_contour_idx = hierachy[0][i][3]
+        box_contour = contours[box_contour_idx]
+        print(f'num contourArea:{cv2.contourArea(box_contour)}')
+        box_hull = cv2.convexHull(box_contour)
+        box_points = findConvexPoints(box_hull)
+        drawConvex(box_points, result_img)
+ 
+        # ok, r_vec, t_vec = doPnP(id, num_points)
+        # rotateVec2EulerAnge(r_vec)
 
     cv2.imshow("origin", frame)
     cv2.imshow('result', result_img)
