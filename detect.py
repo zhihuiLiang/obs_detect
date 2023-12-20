@@ -131,17 +131,17 @@ def doPnP(idx, points_in_img):
 
 def rotateVec2EulerAnge(rvec):
     rmat = cv2.Rodrigues(rvec)
-    pass
     ''' ZYX式旋转 先yaw、后pitch、在roll
     [[cos(pitch) * cos(yaw), -sin(yaw) * cos(pitch), sin(pitch), 0], 
      [sin(pitch) * sin(roll) * cos(yaw) + sin(yaw) * cos(roll),
       -sin(pitch) * sin(roll) * sin(yaw) + cos(roll) *cos(yaw),
-      -sin(r) * cos(pitch), 0],
+      -sin(roll) * cos(pitch), 0],
       [-sin(pitch) * cos(roll) * cos(yaw) + sin(roll) * sin(yaw), 
        sin(pitch) * sin(yaw) * cos(roll) + sin(roll) * cos(yaw),
       cos(pitch) * cos(roll), 0]
       [0, 0, 0, 1]]
-    '''
+    ''' 
+
 while True:
     _, frame = cap.read()
     height, width, _ = frame.shape
@@ -171,7 +171,7 @@ while True:
     for i, contour in enumerate(contours):
         contour_area = cv2.contourArea(contour)
         if contour_area < MIN_NUN_CONTOUR or contour_area > MAX_NUM_CONTOUR or hierachy[0][i][3] == -1: 
-            print(f'box contourArea:{cv2.contourArea(contour)} too small or this contour do not have parenet contour')
+            # print(f'box contourArea:{cv2.contourArea(contour)} too small or this contour do not have parenet contour')
             continue
         num_hull = cv2.convexHull(contour)
         num_points = findConvexPoints(num_hull)
