@@ -28,6 +28,7 @@ MIN_NUN_CONTOUR = 20
 MAX_NUM_CONTOUR = 2000
 
 MAP_ROI_SIZE = (480, 480)
+RATIO = 4
 
 if not USE_VIDEO:
     cap = cv2.VideoCapture(0)
@@ -227,7 +228,7 @@ if __name__ == '__main__':
             homo_point = np.hstack((obs_loc, np.ones((len(obs_loc), 1))))
             perspective_point = rotate_mat @ np.transpose(homo_point)
             perspective_obs_loc.append(np.transpose(perspective_point[:2, :]))
-
+            print('Real Distance:', perspective_obs_loc / 4)
         binary_map = cv2.warpPerspective(binary_map, rotate_mat, MAP_ROI_SIZE)
         for points in perspective_obs_loc:
             drawConvex(points, binary_map, (0, 0, 0))
