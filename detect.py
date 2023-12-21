@@ -4,7 +4,7 @@ import numpy as np
 import json
 
 ENABLE_BLUR = False
-USE_VIDEO = True
+USE_VIDEO = False
 
 # H1_MAX = 20
 # H2_MIN = 143
@@ -228,7 +228,7 @@ if __name__ == '__main__':
             homo_point = np.hstack((obs_loc, np.ones((len(obs_loc), 1))))
             perspective_point = rotate_mat @ np.transpose(homo_point)
             perspective_obs_loc.append(np.transpose(perspective_point[:2, :]))
-            print('Real Distance:', perspective_obs_loc / 4)
+            print('Real Distance(cm):', perspective_obs_loc[-1] / RATIO)
         binary_map = cv2.warpPerspective(binary_map, rotate_mat, MAP_ROI_SIZE)
         for points in perspective_obs_loc:
             drawConvex(points, binary_map, (0, 0, 0))
