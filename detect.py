@@ -1,3 +1,4 @@
+from math import fabs
 import cv2
 import numpy as np
 import json
@@ -170,6 +171,7 @@ def rotateVec2EulerAnge(rvec):
 if __name__ == '__main__':
     while True:
         _, frame = cap.read()
+        frame = cv2.undistort(frame, cam_mat, distor_coffe)
         height, width, _ = frame.shape
         result_img = np.copy(frame)
 
