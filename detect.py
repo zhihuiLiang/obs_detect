@@ -1,4 +1,3 @@
-from pickletools import uint8
 import cv2
 import numpy as np
 import json
@@ -97,8 +96,8 @@ def drawConvex(points, img, color):
         p1 = (int(p[0]), int(p[1]))
         p2 = (int(points[(i + 1) % 4][0]), int(points[(i + 1) % 4][1]))
         cv2.line(img, p1, p2, color, 1)
-        # cv2.putText(img, str(i), p1, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),
-        #             1)
+        cv2.putText(img, str(i), p1, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),
+                    1)
 
 
 def extractNumImg(points, img):
@@ -221,7 +220,8 @@ if __name__ == '__main__':
             drawConvex(box_points, result_img, (0, 255, 0))
 
             obs_loc_arr.append(box_points)
-            # ok, r_vec, t_vec = doPnP(id, num_points)
+            ok, r_vec, t_vec = doPnP(3, num_points)
+            # print('tvec', t_vec)
             # rotateVec2EulerAnge(r_vec)
 
         cv2.imshow("origin", frame)
