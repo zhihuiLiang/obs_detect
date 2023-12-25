@@ -1,9 +1,13 @@
 import cv2
 import numpy as np
+import os
 
 SAVE_VIDEO = False
 
-save_dir = 'record/'
+save_dir = 'record'
+if not os.path.exists(save_dir):
+    print(f'{save_dir} do not exist, make one')
+    os.makedirs(save_dir)
 
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -31,8 +35,8 @@ while True:
     c = cv2.waitKey(1)
 
     if c == 49:  #'1'
-        print(f'Save picture {cnt}/20')
-        pic_path = save_dir + str(cnt) + '.jpg'
+        print(f'Save picture {cnt}')
+        pic_path = save_dir + '/' + str(cnt) + '.jpg'
         cv2.imwrite(pic_path, frame)
         cnt += 1
     if c == 27:
