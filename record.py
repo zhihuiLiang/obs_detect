@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+SAVE_VIDEO = False
+
 save_dir = 'record/'
 
 cap = cv2.VideoCapture(0)
@@ -12,18 +14,20 @@ width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print(f'size:{width}×{height}')
 
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter(save_dir + 'origin_vedio.mp4',
-                      fourcc=fourcc,
-                      fps=30,
-                      frameSize=(width, height))
+if SAVE_VIDEO:
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(save_dir + 'origin_vedio.mp4',
+                          fourcc=fourcc,
+                          fps=30,
+                          frameSize=(width, height))
 
 cnt = 1
 while True:
     _, frame = cap.read()
     cv2.imshow("A video", frame)
 
-    ret = out.write(frame)
+    if SAVE_VIDEO:
+        ret = out.write(frame)
     c = cv2.waitKey(1)
 
     if c == 49:  #'1'
@@ -34,6 +38,7 @@ while True:
     if c == 27:
         break
 
-out.release()
+if SAVE_VIDEO:
+    out.release()
 cap.release()
 cv2.destroyAllWindows()

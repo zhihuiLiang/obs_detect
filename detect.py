@@ -3,8 +3,11 @@ import cv2
 import numpy as np
 import json
 
+from record import SAVE_VIDEO
+
 ENABLE_BLUR = False
 USE_VIDEO = False
+SAVE_VIDEO = False
 
 # H1_MAX = 20
 # H2_MIN = 143
@@ -42,11 +45,12 @@ width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print(f'size:{width}×{height}')
 
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter('origin_vedio.mp4',
-                      fourcc=fourcc,
-                      fps=30,
-                      frameSize=(width, height))
+if SAVE_VIDEO:
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter('origin_video.mp4',
+                          fourcc=fourcc,
+                          fps=30,
+                          frameSize=(width, height))
 
 num_classify_net = cv2.dnn.readNetFromONNX('mlp.onnx')
 
@@ -234,13 +238,14 @@ if __name__ == '__main__':
             drawConvex(points, binary_map, (0, 0, 0))
         cv2.imshow('map', binary_map)
 
-        if not USE_VIDEO:
+        if SAVE_VIDEO:
             ret = out.write(frame)
 
         c = cv2.waitKey(1)
         if c == 27:
             break
 
-    out.release()
+    if SAVE_VIDEO:
+        out.release()
     cap.release()
     cv2.destroyAllWindows()
