@@ -2,8 +2,8 @@ from math import fabs
 import cv2
 import numpy as np
 import json
-
-from record import SAVE_VIDEO
+import socket
+import sys
 
 ENABLE_BLUR = False
 USE_VIDEO = False
@@ -30,8 +30,11 @@ MIN_BOX_CONTOUR = 200
 MIN_NUN_CONTOUR = 20
 MAX_NUM_CONTOUR = 2000
 
-MAP_ROI_SIZE = (480, 480)
-RATIO = 4
+RATIO = 1.195 / 228
+
+USE_SOCKET = True
+PORT = 9000
+SERVER_IP = '192.168.1.142'
 
 if not USE_VIDEO:
     cap = cv2.VideoCapture(0)
@@ -40,6 +43,16 @@ else:
 if not cap.isOpened():
     print("Cannot open camera or video")
     exit()
+
+if USE_SOCKET:
+    try:
+        sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error as msg:
+        print('Failed to create socket. Error code: ' + str(msg[0]) + ', Error message : ' + msg[1]) 
+        sys.exit()
+    sk.connect((SERVER_IP, PORT))
+    print("Connect Server Successfully")
+
 
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -154,21 +167,8 @@ def doPnP(idx, points_in_img):
                         None, False, cv2.SOLVEPNP_EPNP)
 
 
-def rotateVec2EulerAnge(rvec):
-    rmat = cv2.Rodrigues(rvec)
-    ''' ZYX式旋转 先yaw、后pitch、在roll
-    [[cos(pitch) * cos(yaw), -sin(yaw) * cos(pitch), sin(pitch), 0], 
-     [sin(pitch) * sin(roll) * cos(yaw) + sin(yaw) * cos(roll),
-      -sin(pitch) * sin(roll) * sin(yaw) + cos(roll) *cos(yaw),
-      -sin(roll) * cos(pitch), 0],
-      [-sin(pitch) * cos(roll) * cos(yaw) + sin(roll) * sin(yaw), 
-       sin(pitch) * sin(yaw) * cos(roll) + sin(roll) * cos(yaw),
-      cos(pitch) * cos(roll), 0]
-      [0, 0, 0, 1]]
-    '''
-
-
 if __name__ == '__main__':
+    seq = 0
     while True:
         _, frame = cap.read()
         frame = cv2.undistort(frame, cam_mat, distor_coffe)
@@ -222,23 +222,20 @@ if __name__ == '__main__':
             drawConvex(box_points, result_img, (0, 255, 0))
 
             obs_loc_arr.append(box_points)
-            ok, r_vec, t_vec = doPnP(3, num_points)
-            # print('tvec', t_vec)
-            # rotateVec2EulerAnge(r_vec)
 
         cv2.imshow("origin", frame)
         cv2.imshow('result', result_img)
-        perspective_obs_loc = []
+        obs_loc_msg = "SSeq-" + str(seq) + " "
         for obs_loc in obs_loc_arr:
-            # drawConvex(obs_loc, binary_map, (0, 0, 0))
-            homo_point = np.hstack((obs_loc, np.ones((len(obs_loc), 1))))
-            perspective_point = rotate_mat @ np.transpose(homo_point)
-            perspective_obs_loc.append(np.transpose(perspective_point[:2, :]))
-            print('Real Distance(cm):', perspective_obs_loc[-1] / RATIO)
-        binary_map = cv2.warpPerspective(binary_map, rotate_mat, MAP_ROI_SIZE)
-        for points in perspective_obs_loc:
-            drawConvex(points, binary_map, (0, 0, 0))
-        cv2.imshow('map', binary_map)
+            for p in obs_loc:
+                x = p[1] * RATIO
+                y = p[0] * RATIO
+                str_msg = f'({x:.3f},{y:.3f})'
+            obs_loc_msg += " " +  str_msg
+        obs_loc_msg += "ESeq-" + str(seq) + "\n"
+        print(obs_loc_msg)
+        if USE_SOCKET:
+            sk.sendall(obs_loc_msg)
 
         if SAVE_VIDEO:
             ret = out.write(frame)
