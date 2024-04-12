@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
-from detect import drawConvex
-from detect import findConvexPoints
+# from detect import drawConvex
+# from detect import findConvexPoints
 
-USE_VIDEO = True
+USE_VIDEO = False
 
 if not USE_VIDEO:
     cap = cv2.VideoCapture(0)
@@ -86,15 +86,15 @@ while True:
 
     binary_img = mask0 + mask1
 
-    contours, hierachy = cv2.findContours(binary_img, cv2.RETR_CCOMP,
-                                          cv2.CHAIN_APPROX_SIMPLE)
-    for i, contour in enumerate(contours):
-        hull = cv2.convexHull(contour)
-        points = findConvexPoints(hull)
-        drawConvex(points, contour_img)
+    # contours, hierachy = cv2.findContours(binary_img, cv2.RETR_CCOMP,
+    #                                       cv2.CHAIN_APPROX_SIMPLE)
+    # for i, contour in enumerate(contours):
+    #     hull = cv2.convexHull(contour)
+    #     points = findConvexPoints(hull)
+    #     drawConvex(points, contour_img)
 
     cv2.imshow('Binary', binary_img)
-    cv2.imshow('contour', contour_img)
+    # cv2.imshow('contour', contour_img)
 
     c = cv2.waitKey(10)
     if c == 27:

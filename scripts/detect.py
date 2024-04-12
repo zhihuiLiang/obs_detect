@@ -32,7 +32,7 @@ MAX_NUM_CONTOUR = 2000
 
 RATIO = 1.195 / 228
 
-USE_SOCKET = True
+USE_SOCKET = False
 PORT = 9000
 SERVER_IP = '192.168.1.142'
 
@@ -43,6 +43,15 @@ else:
 if not cap.isOpened():
     print("Cannot open camera or video")
     exit()
+
+conf = {}
+with open('conf/conf.json') as f:
+    conf_data = json.load(f)
+
+shape = conf_data['shape']
+cam_mat = np.transpose(conf_data['cam_mat'])
+distor_coffe = np.array(conf_data['distortion'])
+rotate_mat = np.float32(conf_data['rotate_mat'])
 
 if USE_SOCKET:
     try:
@@ -65,17 +74,7 @@ if SAVE_VIDEO:
                           fps=30,
                           frameSize=(width, height))
 
-num_classify_net = cv2.dnn.readNetFromONNX('mlp.onnx')
-
-conf = {}
-with open('conf.json') as f:
-    conf_data = json.load(f)
-shape = conf_data['shape']
-
-cam_mat = np.transpose(conf_data['cam_mat'])
-distor_coffe = np.array(conf_data['distortion'])
-rotate_mat = np.float32(conf_data['rotate_mat'])
-
+# num_classify_net = cv2.dnn.readNetFromONNX('mlp.onnx')
 
 def sortedPoints(points):
     length = []
@@ -130,30 +129,30 @@ def extractNumImg(points, img):
     return num_img
 
 
-def classifyNum(img):
-    img = np.float32(img) / 255
+# def classifyNum(img):
+#     img = np.float32(img) / 255
 
-    def classify(img):
-        blob = cv2.dnn.blobFromImage(img, 1.0, ROI_SIZE)
-        num_classify_net.setInput(blob)
+#     def classify(img):
+#         blob = cv2.dnn.blobFromImage(img, 1.0, ROI_SIZE)
+#         num_classify_net.setInput(blob)
 
-        outputs = num_classify_net.forward()
+#         outputs = num_classify_net.forward()
 
-        max_prob = np.max(outputs)
-        softmax_prob = cv2.exp(outputs - max_prob)
-        sum = cv2.sumElems(softmax_prob)[0]
-        softmax_prob = softmax_prob / sum
+#         max_prob = np.max(outputs)
+#         softmax_prob = cv2.exp(outputs - max_prob)
+#         sum = cv2.sumElems(softmax_prob)[0]
+#         softmax_prob = softmax_prob / sum
 
-        _, conf, _, cls_point = cv2.minMaxLoc(softmax_prob)
-        return cls_point[0], conf
+#         _, conf, _, cls_point = cv2.minMaxLoc(softmax_prob)
+#         return cls_point[0], conf
 
-    id1, conf1 = classify(img)
-    id2 = 0
-    conf2 = 0.0
-    if id1 == 8 or conf1 < 0.7:
-        img = cv2.flip(img, 1)
-        id2, conf2 = classify(img)
-    return id1 if conf1 > conf2 or id2 == 8 else id2
+#     id1, conf1 = classify(img)
+#     id2 = 0
+#     conf2 = 0.0
+#     if id1 == 8 or conf1 < 0.7:
+#         img = cv2.flip(img, 1)
+#         id2, conf2 = classify(img)
+#     return id1 if conf1 > conf2 or id2 == 8 else id2
 
 
 def doPnP(idx, points_in_img):
@@ -208,11 +207,11 @@ if __name__ == '__main__':
             num_hull = cv2.boxPoints(num_rect)
             num_points = sortedPoints(num_hull)
             drawConvex(num_points, result_img, (0, 255, 0))
-            num_image = extractNumImg(num_points, frame)
-            id = classifyNum(num_image)
-            cv2.putText(result_img, str(id),
-                        (int(num_points[0][0] + 10), int(num_points[0][1])),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
+            # num_image = extractNumImg(num_points, frame)
+            # id = classifyNum(num_image)
+            # cv2.putText(result_img, str(id),
+            #             (int(num_points[0][0] + 10), int(num_points[0][1])),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
 
             box_contour_idx = hierachy[0][i][3]
             box_contour = contours[box_contour_idx]
@@ -227,15 +226,17 @@ if __name__ == '__main__':
         cv2.imshow('result', result_img)
         obs_loc_msg = "SSeq-" + str(seq) + " "
         for obs_loc in obs_loc_arr:
+            str_msg = f'obs:'
             for p in obs_loc:
                 x = p[1] * RATIO
                 y = p[0] * RATIO
-                str_msg = f'({x:.3f},{y:.3f})'
+                str_msg += f'({x:.3f},{y:.3f})'
             obs_loc_msg += " " +  str_msg
         obs_loc_msg += "ESeq-" + str(seq) + "\n"
         print(obs_loc_msg)
         if USE_SOCKET:
-            sk.sendall(obs_loc_msg)
+            sk.sendall(obs_loc_msg.encode())
+        seq += 1
 
         if SAVE_VIDEO:
             ret = out.write(frame)
@@ -243,7 +244,7 @@ if __name__ == '__main__':
         c = cv2.waitKey(1)
         if c == 27:
             break
-
+        
     if SAVE_VIDEO:
         out.release()
     cap.release()
